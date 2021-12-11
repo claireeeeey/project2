@@ -46,7 +46,7 @@ class_diag <- function(score, truth, positive, cutoff=.5){
 
 # Mining, Classification, Prediction
 
-## Name and EID here
+## Lingyu Yan
 
 ### Introduction 
 
@@ -54,18 +54,29 @@ Paragraph or two introducing your datasets and variables, why they are interesti
 
 ```{R}
 library(tidyverse)
-# read your datasets in here, e.g., with read_csv()
-
-# if your dataset needs tidying, do so here
-
-# any other code here
+library(tidyr)
+affair <- read_csv("~/Downloads/Affairs.csv")
+affair <- affair %>% select(-1) %>% drop_na()
+affair
 ```
 
 ### Cluster Analysis
 
 ```{R}
 library(cluster)
-# clustering code here
+library(GGally)
+pam_dat <- affair%>%select(age,religiousness,education)
+sil_width <- vector()
+for(i in 2:10){  
+    pam_fit <- pam(pam_dat, k = i)  
+    sil_width[i] <- pam_fit$silinfo$avg.width  
+}
+ggplot()+geom_line(aes(x=1:10,y=sil_width))+scale_x_continuous(name="k",breaks=1:10)
+set.seed(332)
+pam1 <- pam_dat %>% pam(2)
+pam1
+plot(pam1, which=2, border=NA)
+affair %>% mutate(cluster=as.factor(pam1$clustering))%>%ggpairs(columns=c(3,6,7),aes(color=cluster))
 ```
 
 Discussion of clustering here
@@ -75,6 +86,14 @@ Discussion of clustering here
 
 ```{R}
 # PCA code here
+affair_nums <- affair %>% select_if(is.numeric) %>% scale
+rownames(affair_nums) <- affair$Name
+affair_pca <- princomp(affair_nums)
+names(affair_pca)
+summary(affair_pca, loadings=T)
+
+library(factoextra)
+fviz_pca_biplot(affair_pca)
 ```
 
 Discussions of PCA here. 
@@ -82,11 +101,19 @@ Discussions of PCA here.
 ###  Linear Classifier
 
 ```{R}
-# linear classifier code here
+affair <- affair %>% select(-gender) %>% mutate(children=ifelse(children=="yes", 1, 0))
+fit <- glm(children ~ . , data=affair, family="binomial")
+score <- predict(fit, type="response")
+class_diag(score, affair$children, positive=1)
+table(truth = affair$children, predictions = probs>.5)
 ```
 
 ```{R}
-# cross-validation of linear classifier here
+library(caret)
+fit <- knn3(children ~ . , data=affair)
+probs <- predict(fit, newdata=affair)[,2]
+class_diag(probs, affair$children, positive="True") 
+table(truth = affair$children, predictions = probs>.5)
 ```
 
 Discussion here
