@@ -105,7 +105,7 @@ affair <- affair %>% select(-gender) %>% mutate(children=ifelse(children=="yes",
 fit <- glm(children ~ . , data=affair, family="binomial")
 score <- predict(fit, type="response")
 class_diag(score, affair$children, positive=1)
-table(truth = affair$children, predictions = probs>.5)
+table(truth = affair$children, predictions = score>.5)
 ```
 
 ```{R}
@@ -113,7 +113,7 @@ library(caret)
 fit <- knn3(children ~ . , data=affair)
 probs <- predict(fit, newdata=affair)[,2]
 class_diag(probs, affair$children, positive="True") 
-table(truth = affair$children, predictions = probs>.5)
+table(truth = affair$children, predictions = score>.5)
 ```
 
 Discussion here
