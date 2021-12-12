@@ -46,17 +46,19 @@ class_diag <- function(score, truth, positive, cutoff=.5){
 
 # Mining, Classification, Prediction
 
-## Lingyu Yan
+## Lingyu Yan ly4423
 
 ### Introduction 
 
 Paragraph or two introducing your datasets and variables, why they are interesting to you, etc. See instructions for more information
 
+Affairs happen more and more in marriage currently, and there are also examples of this around my parents' friends. Therefore, I am interested in reasons contribute to affairs. The dataset are built-in (R) dataset. There are nine variables: affairs, age, gender, years of married, have children or not, number of religiousness, education levels in year, occupation according to Hollingshead classification, and self rating of marriage. For this data, I would like to focus on if children are in the marriage, so the "gender" variable and serial numbers of obersvations will be deleted. There are totally 601 observations and also 601 observations for binary variable "children".
+
 ```{R}
 library(tidyverse)
 library(tidyr)
 affair <- read_csv("~/Downloads/Affairs.csv")
-affair <- affair %>% select(-1) %>% drop_na()
+affair <- affair %>% select(-1,-gender) %>% drop_na()
 affair
 ```
 
@@ -65,7 +67,7 @@ affair
 ```{R}
 library(cluster)
 library(GGally)
-pam_dat <- affair%>%select(age,religiousness,education)
+pam_dat <- affair%>%select(affairs,age,yearsmarried)
 sil_width <- vector()
 for(i in 2:10){  
     pam_fit <- pam(pam_dat, k = i)  
@@ -75,11 +77,11 @@ ggplot()+geom_line(aes(x=1:10,y=sil_width))+scale_x_continuous(name="k",breaks=1
 set.seed(332)
 pam1 <- pam_dat %>% pam(2)
 pam1
-plot(pam1, which=2, border=NA)
-affair %>% mutate(cluster=as.factor(pam1$clustering))%>%ggpairs(columns=c(3,6,7),aes(color=cluster))
+plot(pam1, which=2)
+affair %>% mutate(cluster=as.factor(pam1$clustering))%>%ggpairs(columns=c(1,2,3),aes(color=cluster))
 ```
 
-Discussion of clustering here
+Among these three variables, affair and age have the least correlation with 0.095. Age and years of married have the strongest correlation with 0.778. The average silhouette width is 0.54 which means that a reasonable structure has been found and the data point is cohesive within the cluster.
     
     
 ### Dimensionality Reduction with PCA
@@ -96,12 +98,12 @@ library(factoextra)
 fviz_pca_biplot(affair_pca)
 ```
 
-Discussions of PCA here. 
+The higher scores on PC1 mean low rating, and higher scores on other variables. 0.3027 of the total variance in your dataset is explained by PC1. The higher scores on PC2 mean higher score on whether there are children, and lower scores on other variables. 0.1985 of the total variance in your dataset is explained by PC2. The higher scores on PC3 mean higher numbers of affairs, and lower scores o other variables. 0.1604 of the total variance in your dataset is explained by PC3.
 
 ###  Linear Classifier
 
 ```{R}
-affair <- affair %>% select(-gender) %>% mutate(children=ifelse(children=="yes", 1, 0))
+affair <- affair %>% mutate(children=ifelse(children=="yes", 1, 0))
 fit <- glm(children ~ . , data=affair, family="binomial")
 score <- predict(fit, type="response")
 class_diag(score, affair$children, positive=1)
@@ -109,52 +111,94 @@ table(truth = affair$children, predictions = score>.5)
 ```
 
 ```{R}
-library(caret)
-fit <- knn3(children ~ . , data=affair)
-probs <- predict(fit, newdata=affair)[,2]
-class_diag(probs, affair$children, positive="True") 
-table(truth = affair$children, predictions = score>.5)
+set.seed(322)
+k=10
+data<-sample_frac(affair)
+folds <- rep(1:k, length.out=nrow(data))
+diags<-NULL
+i=1
+for(i in 1:k){
+train<-data[folds!=i,] 
+test<-data[folds==i,] 
+truth<-test$children
+fit <- glm(children ~ . , data=train, family="binomial")
+probs <- predict(fit, newdata=test, type="response")
+diags <- rbind(diags,class_diag(probs,truth, positive=1)) }
+summarize_all(diags,mean)
 ```
 
-Discussion here
+The model performs outstandingly per CV AUC value of 0.8804. AUC dropped a little bit in CV compared to AUC in logistic regression of 0.8838. This is a sign of overfitting a tiny bit.
 
 ### Non-Parametric Classifier
 
 ```{R}
 library(caret)
-# non-parametric classifier code here
+knn_fit <- knn3(children ~ . , data=affair)
+knn_fit
+prob_knn <- predict(knn_fit, newdata=affair)[,2]
+class_diag(prob_knn, affair$children, positive=1)
 ```
 
 ```{R}
 # cross-validation of np classifier here
+set.seed(322)
+k=10
+data<-sample_frac(affair)
+folds <- rep(1:k, length.out=nrow(data))
+diags<-NULL
+i=1
+for(i in 1:k){
+train<-data[folds!=i,] 
+test<-data[folds==i,] 
+truth<-test$children
+fit <- knn3(children ~ ., data=train)
+probs <- predict(fit, newdata=test)[,2]
+diags<-rbind(diags,class_diag(probs,truth, positive=1)) }
+summarize_all(diags,mean)
 ```
-
-Discussion
-
+The model performs outstandingly per CV AUC value of 0.8522. AUC dropped in CV compared to AUC in knn of 0.9281 This is a sign of overfitting. Logistic regression performed better in cross-validation.
 
 ### Regression/Numeric Prediction
 
 ```{R}
-# regression model code here
+fit <- lm(children~ ., data=affair)
+yhat <- predict(fit)
+mean((affair$children-yhat)^2)
 ```
 
 ```{R}
-# cross-validation of regression model here
+set.seed(1234)
+k=5
+data <- affair[sample(nrow(affair)),]
+folds <- cut(seq(1:nrow(affair)),breaks=k,labels=F)
+diags<-NULL
+for(i in 1:k){
+  train <- data[folds!=i,]
+  test <- data[folds==i,]
+  fit <- lm(children~ .,data=train)
+  yhat <- predict(fit,newdata=test)
+  diags<-mean((test$children-yhat)^2) 
+}
+mean(diags)
 ```
 
-Discussion
+Predict score on children from all other numeric variables and gets MSE of 0.1327. The MSE is low which is good. The MSE across all folds in CV is 0.1162 and is lower, meaning there is no overfitting.
 
 ### Python 
 
 ```{R}
 library(reticulate)
+use_python("/usr/bin/python3", required=F)
+hi <- "Hello"
+cat(c(hi,py$hi))
 ```
 
 ```{python}
-# python code here
+hi="world"
+print(r.hi,hi)
 ```
 
-Discussion
+We use reticulate package to let R and Python plat together. Then we access R-defined objects with r in Python code chunk. Finally, we can access Python-defined objects with py$.
 
 ### Concluding Remarks
 

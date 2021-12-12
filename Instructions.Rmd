@@ -129,15 +129,15 @@ Again, you can use data from anywhere you want (see bottom for resources)! If yo
     2. In the terminal, run the following code, changing your username accordingly
 
 ```{bash, eval=F}
-cd ~/project2 #cd to your project2 directory
+cd ~/project2
 git add .
 git commit -m "message"
-git remote set-url origin https://github.com/YOUR_USERNAME/project1.git
+git remote set-url origin https://github.com/claireeeeey/project2.git
 git push origin main
 ```
 
 - Once it is up there, go to your remote repository and then to Settings > Options and scroll down to GitHub pages. Alternately, go to 
-https://github.com/YOUR_USERNAME/project2/settings/pages. 
+https://github.com/claireeeeey/project2/settings/pages. 
 
     - Then, select the main branch and click save. Finally, go back to your homepage repository, go to the Portfolio.Rmd page, and update the link for project2 to YOUR_USERNAME.github.io/project2. Add, commit, and push your updated homepage to GitHub for deployment.
 
